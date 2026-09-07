@@ -19,4 +19,22 @@ def read_video(video_path):
     cv2.destroyAllWindows()
 
 
-read_video("videos/input.mp4")
+def get_video_info(video):
+    fps = video.get(cv2.CAP_PROP_FPS)
+    width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    frame_count = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    duration = frame_count / fps
+
+    print(f"FPS: {fps}")
+    print(f"Resolution: {width}x{height}")
+    print(f"Frame count: {frame_count}")
+    print(f"Duration: {duration:.2f} seconds")
+
+
+video = cv2.VideoCapture("videos/input.mp4")
+
+get_video_info(video)
+
+video.release()
