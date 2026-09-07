@@ -32,6 +32,13 @@ def get_video_info(video):
     print(f"Frame count: {frame_count}")
     print(f"Duration: {duration:.2f} seconds")
 
+def draw_people(frame, people):
+    for person in people:
+        x1, y1, x2, y2 = person
+
+        cv2.rectangle(frame,(x1, y1),(x2, y2),(0, 255, 0),2)
+
+    return frame
 
 video = cv2.VideoCapture("videos/input.mp4")
 
