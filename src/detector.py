@@ -19,3 +19,4 @@ def detect_people(frame):
                 people.append((x1, y1, x2, y2, confidence))
 
     return people
+
