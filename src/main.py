@@ -13,8 +13,8 @@ def read_video(video_path, zone):
     previous_ids = []
 
     while True:
-        ret, frame = video.read()
 
+        ret, frame = video.read()
         if not ret:
             break
 
@@ -109,6 +109,7 @@ def find_lost_people(previous_ids, current_ids):
             lost_ids.append(track_id)
 
     return lost_ids
+
 
 
 if __name__ == "__main__":
