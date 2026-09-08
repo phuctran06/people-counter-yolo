@@ -10,6 +10,8 @@ def read_video(video_path, zone):
 
     video = cv2.VideoCapture(video_path)
 
+    previous_ids = []
+
     while True:
         ret, frame = video.read()
 
@@ -18,6 +20,17 @@ def read_video(video_path, zone):
 
         people = track_people(frame)
 
+        current_ids = []
+
+        for person in people:
+            track_id = person[5]
+            current_ids.append(track_id)
+
+        lost_ids = find_lost_people(previous_ids, current_ids)
+
+        print("Current IDs:", current_ids)
+        print("Lost IDs:", lost_ids)
+
         frame = draw_people(frame, people, zone)
 
         cv2.imshow("People Counter", frame)
@@ -25,8 +38,11 @@ def read_video(video_path, zone):
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
+        previous_ids = current_ids
+
     video.release()
     cv2.destroyAllWindows()
+
 
 
 def get_video_info(video):
@@ -83,6 +99,18 @@ def is_inside_zone(person, zone):
     return cv2.pointPolygonTest(zone, (center_x, center_y), False) >= 0
 
 
+def find_lost_people(previous_ids, current_ids):
+
+    lost_ids = []
+
+    for track_id in previous_ids:
+
+        if track_id not in current_ids:
+            lost_ids.append(track_id)
+
+    return lost_ids
+
+
 if __name__ == "__main__":
 
     video = cv2.VideoCapture("videos/input.mp4")
@@ -93,3 +121,4 @@ if __name__ == "__main__":
     get_video_info(video)
 
     video.release()
+
