@@ -54,10 +54,12 @@ def draw_people(frame, people, zone):
 
         cv2.putText(frame,f"Person: {confidence:.2f}",(x1, y1 - 10),cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,255,0),20 )
         cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)
+
     return frame
 
 
 def is_inside_zone(person, zone):
+
     x1, y1, x2, y2, _ = person
     center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
     
@@ -65,9 +67,23 @@ def is_inside_zone(person, zone):
     return cv2.pointPolygonTest(zone, (center_x, center_y), False) >= 0
 
 
+def select_zone(event, x, y, flags, param):
+    global zone_points, zone_selected
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+        zone_points.append((x, y))
+
+    elif event == cv2.EVENT_RBUTTONDOWN:
+        if len(zone_points) >= 3:
+            zone_selected = True
+        else:
+            print("Please select at least 3 points to form a zone.")
 
 
 if __name__ == "__main__":
+
+    zone_points = []
+    zone_selected = False
 
     video = cv2.VideoCapture("videos/input.mp4")
 
