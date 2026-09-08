@@ -1,4 +1,5 @@
 import cv2
+import json
 
 
 zone_points = []
@@ -17,3 +18,13 @@ def select_zone(event, x, y, flags, param):
             zone_selected = True
         else:
             print("Please select at least 3 points to form a zone.")
+
+
+def save_zone(zone_points):
+
+    data = {
+        "zone": zone_points
+    }
+
+    with open("zone.json", "w") as file:
+        json.dump(data, file, indent=4)
