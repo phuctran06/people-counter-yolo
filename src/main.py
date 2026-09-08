@@ -1,9 +1,13 @@
 import cv2
+import json
+import numpy as np
 
-from detector import detect_people
+from detector import track_people
 
 
-def read_video(video_path):
+
+def read_video(video_path, zone):
+
     video = cv2.VideoCapture(video_path)
 
     while True:
@@ -11,10 +15,10 @@ def read_video(video_path):
 
         if not ret:
             break
-        
-        people = detect_people(frame)
 
-        frame = draw_people(frame, people)
+        people = track_people(frame)
+
+        frame = draw_people(frame, people, zone)
 
         cv2.imshow("People Counter", frame)
 
@@ -26,7 +30,7 @@ def read_video(video_path):
 
 
 def get_video_info(video):
-    
+
     fps = video.get(cv2.CAP_PROP_FPS)
     width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -40,19 +44,29 @@ def get_video_info(video):
     print(f"Duration: {duration:.2f} seconds")
 
 
+def load_zone():
+
+    with open("zone.json", "r") as file:
+        data = json.load(file)
+
+    zone = np.array(data["zone"], dtype=np.int32)
+
+    return zone
+
+
+
 def draw_people(frame, people, zone):
 
     cv2.polylines(frame, [zone], isClosed=True, color=(0, 0, 255), thickness=2)
 
     for person in people:
-        x1, y1, x2, y2, confidence = person
+        x1, y1, x2, y2, confidence, track_id = person
 
-        # Calculate the center of the bounding box
+        #Calculate the center of the bounding box
         center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
 
-        cv2.rectangle(frame,(x1, y1),(x2, y2),(0, 255, 0),2)
-
-        cv2.putText(frame,f"Person: {confidence:.2f}",(x1, y1 - 10),cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,255,0),20 )
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        cv2.putText(frame, f"ID: {track_id} Person: {confidence:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 20)
         cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)
 
     return frame
@@ -60,19 +74,22 @@ def draw_people(frame, people, zone):
 
 def is_inside_zone(person, zone):
 
+    if zone is None or len(zone) < 3:
+        return False
+    
     x1, y1, x2, y2, _ = person
     center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
 
     return cv2.pointPolygonTest(zone, (center_x, center_y), False) >= 0
 
 
-
 if __name__ == "__main__":
 
     video = cv2.VideoCapture("videos/input.mp4")
 
-    read_video("videos/input.mp4")
+    zone = load_zone()
+
+    read_video("videos/input.mp4", zone)
     get_video_info(video)
 
     video.release()
-
