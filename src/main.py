@@ -5,7 +5,6 @@ import numpy as np
 from detector import track_people
 
 
-
 def read_video(video_path, zone):
 
     video = cv2.VideoCapture(video_path)
