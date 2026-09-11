@@ -90,7 +90,7 @@ def draw_instructions(frame):
 
     for text in instructions:
 
-        cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (200, 50, 0), 20)
 
         y += 30
 
