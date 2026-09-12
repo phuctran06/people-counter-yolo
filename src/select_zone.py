@@ -15,7 +15,6 @@ def mouse_callback(event, x, y, flags, param):
 
         zone_points.append((x, y))
 
-
     #Right click = xóa điểm cuối
     elif event == cv2.EVENT_RBUTTONDOWN:
 
@@ -31,20 +30,17 @@ def draw_zone(frame):
 
         cv2.circle(frame, point, 5, (0, 0, 255), -1)
 
-
-    #Vẽ các đường nối giữa các điểm
+    #Vẽ các đường nối
     if len(zone_points) >= 2:
 
         for i in range(len(zone_points) - 1):
 
             cv2.line(frame, zone_points[i], zone_points[i + 1], (0, 0, 255), 2)
 
-
-    #Đóng polygon nếu có ít nhất 3 điểm
+    #Đóng polygon
     if len(zone_points) >= 3:
 
         cv2.line(frame, zone_points[-1], zone_points[0], (0, 0, 255), 2)
-
 
     return frame
 
@@ -57,16 +53,13 @@ def save_zone():
 
         return False
 
-
     data = {
         "zone": zone_points
     }
 
-
     with open("zone.json", "w") as file:
 
         json.dump(data, file, indent=4)
-
 
     print("Zone saved to zone.json.")
 
@@ -83,17 +76,14 @@ def draw_instructions(frame):
         "Q            : Quit"
     ]
 
-
     x = 20
     y = 30
 
-
     for text in instructions:
 
-        cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (200, 50, 0), 20)
+        cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
         y += 30
-
 
     return frame
 
@@ -106,12 +96,9 @@ def select_zone_mode(video_path):
     zone_points = []
     zone_saved = False
 
-
     video = cv2.VideoCapture(video_path)
 
-
     ret, frame = video.read()
-
 
     if not ret:
 
@@ -121,27 +108,21 @@ def select_zone_mode(video_path):
 
         return
 
-
     cv2.namedWindow("Select Zone")
 
     cv2.setMouseCallback("Select Zone", mouse_callback)
-
 
     while True:
 
         display_frame = frame.copy()
 
-
         display_frame = draw_zone(display_frame)
 
         display_frame = draw_instructions(display_frame)
 
-
         cv2.imshow("Select Zone", display_frame)
 
-
         key = cv2.waitKey(1) & 0xFF
-
 
         #C = clear toàn bộ zone
         if key == ord("c"):
@@ -150,7 +131,6 @@ def select_zone_mode(video_path):
 
             print("Zone cleared.")
 
-
         #S = save zone
         elif key == ord("s"):
 
@@ -158,14 +138,12 @@ def select_zone_mode(video_path):
 
                 zone_saved = True
 
-                print("You can continue editing or press Q to exit.")
-
+                print("Zone saved.")
 
         #Q = quit
         elif key == ord("q"):
 
             break
-
 
     video.release()
 
