@@ -6,6 +6,25 @@ model = YOLO("yolo11n.pt")
 
 people_state = {}
 
+#Số frame liên tục cần thấy 1 state mới trước khi tin là thật
+#(chống nhiễu khi center point dao động sát viền zone)
+#Giá trị mặc định ở đây chỉ để phòng hờ, thực tế sẽ được
+#set_confirm_time() tính lại theo FPS thật của video khi chạy main.py
+CONFIRM_FRAMES = 3
+
+
+def set_confirm_time(fps, seconds=0.5):
+
+    global CONFIRM_FRAMES
+
+    #Quy đổi thời gian (giây) sang số frame dựa theo FPS thật của video
+    CONFIRM_FRAMES = max(1, round(fps * seconds))
+
+    print(
+        f"CONFIRM_FRAMES = {CONFIRM_FRAMES} "
+        f"(~{seconds}s ở {fps:.2f} FPS)"
+    )
+
 
 def detect_people(frame):
 
@@ -92,19 +111,47 @@ def get_person_state(person, zone):
             "current": current_state,
             #Nếu ID mới đã nằm sẵn trong ZONE thì tính luôn là entered
             "entered": current_state == "ZONE",
-            "tracking": "ACTIVE"
+            "tracking": "ACTIVE",
+            "pending": None,
+            "pending_count": 0
         }
 
         return people_state[track_id]
 
-    #ID đã tồn tại, cập nhật state theo transition
+    #ID đã tồn tại
     state = people_state[track_id]
 
+    state["tracking"] = "ACTIVE"
+
+    #Detect ra giống với current đang giữ -> không có gì để confirm,
+    #hủy pending nếu có (tránh trường hợp dao động qua lại rồi lại về cũ)
+    if current_state == state["current"]:
+
+        state["pending"] = None
+        state["pending_count"] = 0
+
+        return state
+
+    #Detect ra khác với current -> chưa vội tin, chờ xác nhận đủ N frame liên tục
+    if state["pending"] == current_state:
+
+        state["pending_count"] += 1
+
+    else:
+
+        state["pending"] = current_state
+        state["pending_count"] = 1
+
+    #Chưa đủ N frame liên tục -> coi là nhiễu, giữ nguyên current/entered
+    if state["pending_count"] < CONFIRM_FRAMES:
+
+        return state
+
+    #Đã đủ N frame liên tục -> confirm transition thật sự
     previous_state = state["current"]
 
     state["previous"] = previous_state
     state["current"] = current_state
-    state["tracking"] = "ACTIVE"
 
     #OUTSIDE -> ZONE = người đi vào nhà
     if previous_state == "OUTSIDE" and current_state == "ZONE":
@@ -119,5 +166,8 @@ def get_person_state(person, zone):
     #ZONE -> ZONE hoặc OUTSIDE -> OUTSIDE = giữ nguyên entered
     #Trường hợp reappear sau LOST cũng rơi vào 1 trong các nhánh trên,
     #vì previous_state ở đây là "current" cũ được giữ nguyên lúc LOST
+
+    state["pending"] = None
+    state["pending_count"] = 0
 
     return state
