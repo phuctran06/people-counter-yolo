@@ -198,7 +198,6 @@ def draw_people(frame, people, zone, people_count, entered_count, person_states)
             0.6,
             text_color,
             2
-
         )
 
         #Vẽ center point
@@ -213,7 +212,7 @@ def draw_people(frame, people, zone, people_count, entered_count, person_states)
     #Hiển thị số người đang được tracking
     cv2.putText(
         frame,
-        f"People in frame: {people_count}",
+        f"People: {people_count}",
         (20, 40),
         cv2.FONT_HERSHEY_SIMPLEX,
         1,
