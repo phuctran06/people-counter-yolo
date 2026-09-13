@@ -50,40 +50,74 @@ def track_people(frame):
 
                     track_id = int(box.id[0])
 
-                    people.append((x1, y1, x2, y2, confidence, track_id))
+                    people.append(
+                        (x1, y1, x2, y2, confidence, track_id)
+                    )
 
     return people
 
 
-def get_person_state(person, zone):
+def get_current_zone_state(person, zone):
 
     x1, y1, x2, y2, _, track_id = person
 
     center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
 
-    inside_zone = cv2.pointPolygonTest(zone, (center_x, center_y), False) >= 0
+    inside_zone = cv2.pointPolygonTest(
+        zone,
+        (center_x, center_y),
+        False
+    ) >= 0
 
     if inside_zone:
 
-        current_state = "ZONE"
+        return "ZONE"
 
     else:
 
-        current_state = "OUTSIDE"
+        return "OUTSIDE"
 
+
+def get_person_state(person, zone):
+
+    track_id = person[5]
+
+    current_state = get_current_zone_state(person, zone)
+
+    #ID lần đầu xuất hiện
     if track_id not in people_state:
 
         people_state[track_id] = {
             "previous": current_state,
             "current": current_state,
-            "entered": current_state == "ZONE"
+            #Nếu ID mới đã nằm sẵn trong ZONE thì tính luôn là entered
+            "entered": current_state == "ZONE",
+            "tracking": "ACTIVE"
         }
 
-    else:
+        return people_state[track_id]
 
-        previous_state = people_state[track_id]["current"]
+    #ID đã tồn tại, cập nhật state theo transition
+    state = people_state[track_id]
 
-        people_state[track_id]["previous"] = previous_state
-        people_state[track_id]["current"] = current_state
+    previous_state = state["current"]
 
-    return people_state[track_id]
+    state["previous"] = previous_state
+    state["current"] = current_state
+    state["tracking"] = "ACTIVE"
+
+    #OUTSIDE -> ZONE = người đi vào nhà
+    if previous_state == "OUTSIDE" and current_state == "ZONE":
+
+        state["entered"] = True
+
+    #ZONE -> OUTSIDE = người đi ra khỏi nhà
+    elif previous_state == "ZONE" and current_state == "OUTSIDE":
+
+        state["entered"] = False
+
+    #ZONE -> ZONE hoặc OUTSIDE -> OUTSIDE = giữ nguyên entered
+    #Trường hợp reappear sau LOST cũng rơi vào 1 trong các nhánh trên,
+    #vì previous_state ở đây là "current" cũ được giữ nguyên lúc LOST
+
+    return state
