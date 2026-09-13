@@ -13,11 +13,7 @@ def read_video(video_path, zone):
 
     video = cv2.VideoCapture(video_path)
 
-    previous_ids = []
-
     missing_frames = {}
-
-    entered_count = 0
 
     while True:
 
@@ -38,85 +34,67 @@ def read_video(video_path, zone):
 
             current_ids.append(track_id)
 
-            #ID xuất hiện lại thì reset missing frames
+            #ID xuất hiện ở frame này -> reset missing frames
             missing_frames[track_id] = 0
+
+            #Lưu lại entered trước khi update, chỉ để in log ENTERED/LEFT
+            previous_entered = people_state.get(track_id, {}).get("entered", False)
 
             state = get_person_state(person, zone)
 
             person_states[track_id] = state
 
-            previous_state = state["previous"]
-            current_state = state["current"]
+            if state["entered"] and not previous_entered:
 
-            #OUTSIDE -> ZONE = người đi vào nhà
-            if previous_state == "OUTSIDE" and current_state == "ZONE":
+                print(f"Person {track_id}: ENTERED")
 
-                if not state["entered"]:
+            elif not state["entered"] and previous_entered:
 
-                    entered_count += 1
-
-                    state["entered"] = True
-
-                    print(f"Person {track_id}: ENTERED")
-
-            #ZONE -> OUTSIDE = người đi ra khỏi nhà
-            elif previous_state == "ZONE" and current_state == "OUTSIDE":
-
-                if state["entered"]:
-
-                    entered_count -= 1
-
-                    state["entered"] = False
-
-                    print(f"Person {track_id}: LEFT")
+                print(f"Person {track_id}: LEFT")
 
             print(
                 f"ID {track_id}: "
-                f"{current_state}, "
+                f"{state['current']}, "
                 f"Entered: {state['entered']}"
             )
+
+        #Tăng missing_frames cho MỌI ID đã biết mà không xuất hiện ở frame này
+        #(so với current_ids, không so với frame trước, nên đếm đúng số frame
+        #liên tiếp bị mất thay vì chỉ tăng đúng 1 lần)
+        for track_id in list(people_state.keys()):
+
+            if track_id in current_ids:
+
+                continue
+
+            missing_frames[track_id] = missing_frames.get(track_id, 0) + 1
+
+            if (
+                missing_frames[track_id] >= MAX_MISSING_FRAMES
+                and people_state[track_id]["tracking"] != "LOST"
+            ):
+
+                people_state[track_id]["tracking"] = "LOST"
+
+                #LOST không làm thay đổi entered
+                print(
+                    f"Person {track_id}: LOST | "
+                    f"Entered: {people_state[track_id]['entered']}"
+                )
 
         #Số người đang được tracking trên frame hiện tại
         people_count = len(current_ids)
 
-        #Tìm ID vừa biến mất
-        disappeared_ids = find_lost_people(previous_ids, current_ids)
+        #Entered luôn được tính lại từ people_state, không cộng/trừ tay
+        #=> tự động đúng cả với ID mới đã nằm sẵn trong ZONE (Case 9)
+        entered_count = sum(
+            1 for state in people_state.values() if state["entered"]
+        )
 
-        #Tăng số frame bị mất
-        for track_id in disappeared_ids:
-
-            if track_id not in missing_frames:
-
-                missing_frames[track_id] = 0
-
-            missing_frames[track_id] += 1
-
-        #Kiểm tra ID đã LOST thật sự
-        lost_ids = []
-
-        for track_id in list(missing_frames.keys()):
-
-            if missing_frames[track_id] >= MAX_MISSING_FRAMES:
-
-                lost_ids.append(track_id)
-
-                del missing_frames[track_id]
-
-        #LOST không làm thay đổi Entered
-        for track_id in lost_ids:
-
-            if track_id not in people_state:
-
-                continue
-
-            state = people_state[track_id]
-
-            state["tracking"] = "LOST"
-
-            print(
-                f"Person {track_id}: LOST | "
-                f"Entered: {state['entered']}"
-            )
+        lost_ids = [
+            track_id for track_id, state in people_state.items()
+            if state["tracking"] == "LOST"
+        ]
 
         #Hiển thị thông tin
         print("Current IDs:", current_ids)
@@ -139,8 +117,6 @@ def read_video(video_path, zone):
         if cv2.waitKey(1) & 0xFF == ord("q"):
 
             break
-
-        previous_ids = current_ids
 
     video.release()
 
@@ -221,7 +197,8 @@ def draw_people(frame, people, zone, people_count, entered_count, person_states)
             cv2.FONT_HERSHEY_SIMPLEX,
             0.6,
             text_color,
-            15
+            2
+
         )
 
         #Vẽ center point
@@ -236,7 +213,7 @@ def draw_people(frame, people, zone, people_count, entered_count, person_states)
     #Hiển thị số người đang được tracking
     cv2.putText(
         frame,
-        f"People: {people_count}",
+        f"People in frame: {people_count}",
         (20, 40),
         cv2.FONT_HERSHEY_SIMPLEX,
         1,
@@ -256,36 +233,6 @@ def draw_people(frame, people, zone, people_count, entered_count, person_states)
     )
 
     return frame
-
-
-def is_inside_zone(person, zone):
-
-    if zone is None or len(zone) < 3:
-
-        return False
-
-    x1, y1, x2, y2, _ = person
-
-    center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
-
-    return cv2.pointPolygonTest(
-        zone,
-        (center_x, center_y),
-        False
-    ) >= 0
-
-
-def find_lost_people(previous_ids, current_ids):
-
-    lost_ids = []
-
-    for track_id in previous_ids:
-
-        if track_id not in current_ids:
-
-            lost_ids.append(track_id)
-
-    return lost_ids
 
 
 if __name__ == "__main__":
