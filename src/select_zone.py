@@ -101,7 +101,6 @@ def select_zone_mode(video_path):
     ret, frame = video.read()
 
     if not ret:
-
         print("Cannot read video.")
 
         video.release()
