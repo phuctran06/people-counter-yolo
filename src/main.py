@@ -90,12 +90,7 @@ def read_video(video_path, zone):
         entered_count = sum(
             1 for state in people_state.values() if state["entered"]
         )
-
-        lost_ids = [
-            track_id for track_id, state in people_state.items()
-            if state["tracking"] == "LOST"
-        ]
-
+        lost_ids = [ track_id for track_id, state in people_state.items() if state["tracking"] == "LOST" ]
         #Hiển thị thông tin
         print("Current IDs:", current_ids)
         print("People:", people_count)
@@ -103,15 +98,7 @@ def read_video(video_path, zone):
         print("Lost IDs:", lost_ids)
         print("Entered:", entered_count)
 
-        frame = draw_people(
-            frame,
-            people,
-            zone,
-            people_count,
-            entered_count,
-            person_states
-        )
-
+        frame = draw_people( frame, people, zone, people_count, entered_count, person_states )
         cv2.imshow("People Counter", frame)
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -152,14 +139,7 @@ def load_zone():
 def draw_people(frame, people, zone, people_count, entered_count, person_states):
 
     #Vẽ zone
-    cv2.polylines(
-        frame,
-        [zone],
-        isClosed=True,
-        color=(0, 0, 255),
-        thickness=2
-    )
-
+    cv2.polylines( frame, [zone], isClosed=True, color=(0, 0, 255), thickness=2 )
     for person in people:
 
         x1, y1, x2, y2, confidence, track_id = person
@@ -181,55 +161,18 @@ def draw_people(frame, people, zone, people_count, entered_count, person_states)
             text_color = (0, 255, 0)
 
         #Vẽ bounding box
-        cv2.rectangle(
-            frame,
-            (x1, y1),
-            (x2, y2),
-            text_color,
-            2
-        )
+        cv2.rectangle( frame, (x1, y1), (x2, y2), text_color, 2 )
 
         #Hiển thị ID, confidence và current state
-        cv2.putText(
-            frame,
-            f"ID: {track_id} Person: {confidence:.2f}, Current: {current_state}",
-            (x1, y1 - 10),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            text_color,
-            2
-        )
+        cv2.putText( frame, f"ID: {track_id} Person: {confidence:.2f}, Current: {current_state}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, text_color, 2 )
 
         #Vẽ center point
-        cv2.circle(
-            frame,
-            (center_x, center_y),
-            5,
-            (0, 0, 255),
-            -1
-        )
+        cv2.circle( frame, (center_x, center_y), 5, (0, 0, 255), -1 )
 
     #Hiển thị số người đang được tracking
-    cv2.putText(
-        frame,
-        f"People: {people_count}",
-        (20, 40),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1,
-        (255, 0, 0),
-        2
-    )
-
+    cv2.putText( frame, f"People: {people_count}", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2 )
     #Hiển thị số người đang ở trong nhà
-    cv2.putText(
-        frame,
-        f"Entered: {entered_count}",
-        (20, 80),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1,
-        (255, 0, 0),
-        2
-    )
+    cv2.putText( frame, f"Entered: {entered_count}", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2 )
 
     return frame
 
