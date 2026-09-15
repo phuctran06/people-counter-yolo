@@ -5,9 +5,11 @@ import time
 import cv2
 import numpy as np
 import streamlit as st
+from PIL import Image
+from streamlit_image_coordinates import streamlit_image_coordinates
 
 
-#File này nằm trong UI/, còn detector.py / select_zone.py nằm trong src/
+#File này nằm trong UI/, còn detector.py nằm trong src/
 #(src/ là thư mục con của thư mục gốc project, cùng cấp với UI/)
 #-> phải tự thêm src/ vào sys.path thì mới import được,
 #bất kể bạn chạy lệnh streamlit từ đâu
@@ -20,7 +22,6 @@ if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 
 from detector import track_people, get_person_state, set_confirm_time, people_state
-from select_zone import select_zone_mode
 
 
 #Đường dẫn video và file zone dùng chung cho cả 2 chức năng
@@ -35,7 +36,7 @@ MAX_MISSING_FRAMES = 10
 #Thời gian (giây) cần thấy 1 state mới liên tục thì mới tin là transition thật
 CONFIRM_SECONDS = 0.5
 
-#Chiều rộng hiển thị video trên web, để giảm băng thông/độ trễ
+#Chiều rộng hiển thị ảnh/video trên web
 DISPLAY_WIDTH = 720
 
 
@@ -72,51 +73,143 @@ def load_zone():
     return zone
 
 
-def go_to(mode):
+def save_zone_points(points):
 
-    st.session_state.mode = mode
+    data = {"zone": points}
 
-    st.rerun()
+    with open(ZONE_PATH, "w") as file:
+
+        json.dump(data, file, indent=4)
 
 
-def render_menu():
+@st.cache_data
+def get_first_frame(video_path):
 
-    st.title("PEOPLE COUNTER")
+    video = cv2.VideoCapture(video_path)
 
-    if zone_file_is_valid():
+    ret, frame = video.read()
 
-        st.success("Zone: Đã có sẵn (zone.json)")
+    video.release()
 
-    else:
+    if not ret:
 
-        st.error("Zone: Chưa có / không hợp lệ -> cần chọn Zone trước khi chạy")
+        return None
 
-    col1, col2 = st.columns(2)
+    return frame
+
+
+def draw_zone_preview(frame_rgb, points):
+
+    preview = frame_rgb.copy()
+
+    for point in points:
+
+        cv2.circle(preview, point, 6, (255, 0, 0), -1)
+
+    if len(points) >= 2:
+
+        for i in range(len(points) - 1):
+
+            cv2.line(preview, points[i], points[i + 1], (255, 0, 0), 2)
+
+    if len(points) >= 3:
+
+        cv2.line(preview, points[-1], points[0], (255, 0, 0), 2)
+
+    return preview
+
+
+def render_select_zone():
+
+    st.header("Chọn / Vẽ Zone")
+
+    st.write(
+        "Click vào ảnh để thêm điểm cho zone (cần ít nhất 3 điểm). "
+        "Điểm sẽ được nối theo thứ tự bạn click."
+    )
+
+    if "zone_points" not in st.session_state:
+
+        #Nếu đã có zone.json từ trước thì load lên để chỉnh tiếp
+        if zone_file_is_valid():
+
+            with open(ZONE_PATH, "r") as file:
+
+                data = json.load(file)
+
+            st.session_state.zone_points = [tuple(p) for p in data["zone"]]
+
+        else:
+
+            st.session_state.zone_points = []
+
+    if "last_click_value" not in st.session_state:
+
+        st.session_state.last_click_value = None
+
+    frame = get_first_frame(VIDEO_PATH)
+
+    if frame is None:
+
+        st.error("Không đọc được video để lấy frame đầu tiên. Kiểm tra lại VIDEO_PATH.")
+
+        return
+
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+    preview = draw_zone_preview(frame_rgb, st.session_state.zone_points)
+
+    pil_image = Image.fromarray(preview)
+
+    value = streamlit_image_coordinates(
+        pil_image,
+        key="zone_click",
+        width=DISPLAY_WIDTH
+    )
+
+    #Chỉ thêm điểm khi giá trị click thật sự MỚI (khác lần click trước),
+    #tránh bị cộng dồn điểm liên tục mỗi lần Streamlit rerun
+    if value is not None and value != st.session_state.last_click_value:
+
+        st.session_state.last_click_value = value
+
+        point = (int(value["x"]), int(value["y"]))
+
+        st.session_state.zone_points.append(point)
+
+        st.rerun()
+
+    col1, col2, col3 = st.columns(3)
 
     with col1:
 
-        if st.button("Chọn / Vẽ Zone", use_container_width=True):
+        if st.button("Xóa điểm cuối", use_container_width=True):
 
-            #select_zone_mode mở cửa sổ OpenCV riêng, chạy tới khi nhấn Q
-            select_zone_mode(VIDEO_PATH)
+            if st.session_state.zone_points:
 
-            #Rerun để cập nhật lại status Zone sau khi đóng cửa sổ
+                st.session_state.zone_points.pop()
+
             st.rerun()
 
     with col2:
 
-        if st.button("Chạy People Counter", use_container_width=True):
+        if st.button("Xóa hết", use_container_width=True):
 
-            if not zone_file_is_valid():
+            st.session_state.zone_points = []
 
-                st.warning(
-                    "Chưa có zone hoặc zone không hợp lệ (cần ít nhất 3 điểm). "
-                    "Vui lòng chọn / vẽ Zone trước."
-                )
+            st.rerun()
 
-            else:
+    with col3:
 
-                go_to("counter")
+        can_save = len(st.session_state.zone_points) >= 3
+
+        if st.button("Lưu Zone", type="primary", use_container_width=True, disabled=not can_save):
+
+            save_zone_points(st.session_state.zone_points)
+
+            st.success("Đã lưu zone.json!")
+
+    st.caption(f"Số điểm hiện tại: {len(st.session_state.zone_points)}")
 
 
 def draw_frame(frame, people, zone, person_states):
@@ -168,9 +261,7 @@ def draw_frame(frame, people, zone, person_states):
 
 def render_counter():
 
-    if st.button("< Quay lại Menu"):
-
-        go_to("menu")
+    st.header("Chạy People Counter")
 
     zone = load_zone()
 
@@ -295,19 +386,40 @@ def main():
 
     st.set_page_config(page_title="People Counter", layout="wide")
 
-    if "mode" not in st.session_state:
+    #Sidebar bên trái (Streamlit tự có nút thu/mở thanh này)
+    st.sidebar.title("People Counter")
 
-        st.session_state.mode = "menu"
+    mode = st.sidebar.radio(
+        "Chức năng",
+        ["Chạy People Counter", "Chọn / Vẽ Zone"]
+    )
 
-    if st.session_state.mode == "menu":
+    if zone_file_is_valid():
 
-        render_menu()
+        st.sidebar.success("Zone: Đã có sẵn")
 
-    elif st.session_state.mode == "counter":
+    else:
 
-        render_counter()
+        st.sidebar.error("Zone: Chưa có / không hợp lệ")
+
+    if mode == "Chọn / Vẽ Zone":
+
+        render_select_zone()
+
+    else:
+
+        if not zone_file_is_valid():
+
+            st.warning(
+                "Chưa có zone hoặc zone không hợp lệ (cần ít nhất 3 điểm). "
+                "Vui lòng chọn \"Chọn / Vẽ Zone\" ở sidebar trước."
+            )
+
+        else:
+
+            render_counter()
 
 
 if __name__ == "__main__":
 
-    main()
+    main(
