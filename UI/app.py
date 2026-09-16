@@ -288,7 +288,6 @@ def render_counter():
     missing_frames = {}
 
     try:
-
         while True:
 
             ret, frame = video.read()
