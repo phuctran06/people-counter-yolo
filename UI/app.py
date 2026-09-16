@@ -289,7 +289,6 @@ def render_counter():
 
     try:
         while True:
-
             ret, frame = video.read()
 
             if not ret:
