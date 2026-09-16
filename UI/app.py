@@ -404,14 +404,11 @@ def main():
         render_select_zone()
 
     else:
-
         if not zone_file_is_valid():
-
             st.warning(
                 "Chưa có zone hoặc zone không hợp lệ (cần ít nhất 3 điểm). "
                 "Vui lòng chọn \"Chọn / Vẽ Zone\" ở sidebar trước."
             )
-
         else:
 
             render_counter()
