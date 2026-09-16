@@ -244,15 +244,7 @@ def draw_frame(frame, people, zone, person_states):
 
         cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
 
-        cv2.putText(
-            frame,
-            f"ID {track_id}",
-            (x1, y1 - 10),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            color,
-            2
-        )
+        cv2.putText( frame, f"ID {track_id}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2 )
 
         cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)
 
@@ -260,7 +252,6 @@ def draw_frame(frame, people, zone, person_states):
 
 
 def render_counter():
-
     st.header("Chạy People Counter")
 
     zone = load_zone()
@@ -292,9 +283,7 @@ def render_counter():
             ret, frame = video.read()
 
             if not ret:
-
                 summary_placeholder.info("Video đã kết thúc.")
-
                 break
 
             people = track_people(frame)
