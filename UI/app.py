@@ -395,15 +395,12 @@ def main():
     )
 
     if zone_file_is_valid():
-
         st.sidebar.success("Zone: Đã có sẵn")
 
     else:
-
         st.sidebar.error("Zone: Chưa có / không hợp lệ")
 
     if mode == "Chọn / Vẽ Zone":
-
         render_select_zone()
 
     else:
