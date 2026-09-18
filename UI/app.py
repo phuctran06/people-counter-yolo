@@ -233,6 +233,7 @@ def main():
     st.sidebar.title("People Counter")
     mode = st.sidebar.radio("Chức năng", ["Chạy People Counter", "Chọn / Vẽ Zone"])
 
+
     if zone_file_is_valid():
         st.sidebar.success("Zone: Đã có sẵn")
     else:
@@ -245,12 +246,11 @@ def main():
             st.warning(
                 "Chưa có zo ne hoặc zone không hợp lệ (cần ít nhất 3 điểm). "
                 "Vui lòng chọn \"Chọn / Vẽ Zone\" ở sidebar trước."
-                
             )
         else:
             render_counter()
+        
 
 
 if __name__ == "__main__":
-
     main()
