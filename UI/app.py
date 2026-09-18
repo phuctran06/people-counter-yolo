@@ -7,11 +7,6 @@ import numpy as np
 import streamlit as st
 from PIL import Image
 from streamlit_image_coordinates import streamlit_image_coordinates
-
-# File này nằm trong UI/, còn detector.py nằm trong src/
-# (src/ là thư mục con của thư mục gốc project, cùng cấp với UI/)
-# -> phải tự thêm src/ vào sys.path thì mới import được,
-# bất kể bạn chạy lệnh streamlit từ đâu
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 SRC_DIR = os.path.join(PROJECT_ROOT, "src")
