@@ -1,10 +1,9 @@
 import os
 import json
+import time
 import cv2
 import numpy as np
-import tkinter as tk
-from tkinter import messagebox
-from PIL import Image, ImageTk
+import streamlit as st
 
 from detector import track_people, get_person_state, set_confirm_time, people_state
 from select_zone import select_zone_mode
@@ -19,6 +18,9 @@ MAX_MISSING_FRAMES = 10
 
 #Thời gian (giây) cần thấy 1 state mới liên tục thì mới tin là transition thật
 CONFIRM_SECONDS = 0.5
+
+#Chiều rộng hiển thị video trên web, để giảm băng thông/độ trễ
+DISPLAY_WIDTH = 720
 
 
 def zone_file_is_valid():
@@ -54,348 +56,234 @@ def load_zone():
     return zone
 
 
-class PeopleCounterApp:
+def go_to(mode):
 
-    def __init__(self, root):
+    st.session_state.mode = mode
 
-        self.root = root
-        self.root.title("People Counter")
-        self.root.geometry("1100x650")
+    st.rerun()
 
-        self.build_menu()
 
-    def clear_window(self):
+def render_menu():
 
-        for widget in self.root.winfo_children():
+    st.title("PEOPLE COUNTER")
 
-            widget.destroy()
+    if zone_file_is_valid():
 
-    def build_menu(self):
+        st.success("Zone: Đã có sẵn (zone.json)")
 
-        self.clear_window()
+    else:
 
-        title = tk.Label(
-            self.root,
-            text="PEOPLE COUNTER",
-            font=("Arial", 22, "bold")
-        )
-        title.pack(pady=40)
+        st.error("Zone: Chưa có / không hợp lệ -> cần chọn Zone trước khi chạy")
 
-        select_zone_btn = tk.Button(
-            self.root,
-            text="Chọn / Vẽ Zone",
-            font=("Arial", 14),
-            width=28,
-            command=self.open_select_zone
-        )
-        select_zone_btn.pack(pady=10)
+    col1, col2 = st.columns(2)
 
-        run_btn = tk.Button(
-            self.root,
-            text="Chạy People Counter",
-            font=("Arial", 14),
-            width=28,
-            command=self.open_counter
-        )
-        run_btn.pack(pady=10)
+    with col1:
 
-        if zone_file_is_valid():
+        if st.button("Chọn / Vẽ Zone", use_container_width=True):
 
-            status_text = "Zone: Đã có sẵn (zone.json)"
-            status_color = "green"
+            #select_zone_mode mở cửa sổ OpenCV riêng, chạy tới khi nhấn Q
+            select_zone_mode(VIDEO_PATH)
 
-        else:
+            #Rerun để cập nhật lại status Zone sau khi đóng cửa sổ
+            st.rerun()
 
-            status_text = "Zone: Chưa có / không hợp lệ -> cần chọn Zone trước"
-            status_color = "red"
+    with col2:
 
-        status_label = tk.Label(
-            self.root,
-            text=status_text,
-            font=("Arial", 12),
-            fg=status_color
-        )
-        status_label.pack(pady=30)
+        if st.button("Chạy People Counter", use_container_width=True):
 
-    def open_select_zone(self):
+            if not zone_file_is_valid():
 
-        #select_zone_mode dùng cửa sổ OpenCV riêng, chạy tới khi người dùng nhấn Q
-        select_zone_mode(VIDEO_PATH)
-
-        #Sau khi đóng cửa sổ chọn zone, quay lại menu để cập nhật status
-        self.build_menu()
-
-    def open_counter(self):
-
-        if not zone_file_is_valid():
-
-            messagebox.showwarning(
-                "Chưa có Zone",
-                "Chưa có zone hoặc zone không hợp lệ (cần ít nhất 3 điểm).\n"
-                "Vui lòng bấm \"Chọn / Vẽ Zone\" trước khi chạy."
-            )
-
-            return
-
-        zone = load_zone()
-
-        self.clear_window()
-
-        CounterView(self.root, self, VIDEO_PATH, zone)
-
-
-class CounterView:
-
-    def __init__(self, root, app, video_path, zone):
-
-        self.root = root
-        self.app = app
-        self.zone = zone
-        self.running = True
-
-        self.video = cv2.VideoCapture(video_path)
-
-        fps = self.video.get(cv2.CAP_PROP_FPS)
-
-        if fps <= 0:
-
-            fps = 30
-
-        set_confirm_time(fps, CONFIRM_SECONDS)
-
-        self.missing_frames = {}
-
-        self.build_layout()
-
-        self.update_frame()
-
-    def build_layout(self):
-
-        #Thanh trên cùng có nút quay lại menu
-        top_bar = tk.Frame(self.root)
-        top_bar.pack(side="top", fill="x")
-
-        back_btn = tk.Button(
-            top_bar,
-            text="< Quay lại Menu",
-            command=self.stop_and_back
-        )
-        back_btn.pack(side="left", padx=10, pady=10)
-
-        main_frame = tk.Frame(self.root)
-        main_frame.pack(side="top", fill="both", expand=True)
-
-        #Bên trái: video
-        self.video_label = tk.Label(main_frame)
-        self.video_label.pack(side="left", padx=10, pady=10)
-
-        #Bên phải: info panel
-        info_frame = tk.Frame(main_frame, width=320)
-        info_frame.pack(side="right", fill="both", padx=10, pady=10)
-
-        self.summary_label = tk.Label(
-            info_frame,
-            text="People: 0    Entered: 0",
-            font=("Arial", 14, "bold"),
-            justify="left"
-        )
-        self.summary_label.pack(anchor="w", pady=(0, 10))
-
-        detail_title = tk.Label(
-            info_frame,
-            text="Chi tiết từng người trong frame:",
-            font=("Arial", 12, "bold")
-        )
-        detail_title.pack(anchor="w")
-
-        self.detail_text = tk.Text(
-            info_frame,
-            width=38,
-            height=28,
-            font=("Consolas", 10)
-        )
-        self.detail_text.pack(anchor="w", fill="both", expand=True)
-
-    def update_frame(self):
-
-        if not self.running:
-
-            return
-
-        ret, frame = self.video.read()
-
-        if not ret:
-
-            messagebox.showinfo("Kết thúc", "Video đã kết thúc.")
-
-            self.stop_and_back()
-
-            return
-
-        people = track_people(frame)
-
-        current_ids = []
-        person_states = {}
-
-        for person in people:
-
-            track_id = person[5]
-
-            current_ids.append(track_id)
-
-            #ID xuất hiện ở frame này -> reset missing frames
-            self.missing_frames[track_id] = 0
-
-            state = get_person_state(person, self.zone)
-
-            person_states[track_id] = state
-
-        #Tăng missing_frames cho ID đã biết mà không xuất hiện ở frame này
-        for track_id in list(people_state.keys()):
-
-            if track_id in current_ids:
-
-                continue
-
-            self.missing_frames[track_id] = self.missing_frames.get(track_id, 0) + 1
-
-            if (
-                self.missing_frames[track_id] >= MAX_MISSING_FRAMES
-                and people_state[track_id]["tracking"] != "LOST"
-            ):
-
-                people_state[track_id]["tracking"] = "LOST"
-
-        people_count = len(current_ids)
-
-        #Entered luôn được tính lại từ people_state, không cộng/trừ tay
-        entered_count = sum(
-            1 for state in people_state.values() if state["entered"]
-        )
-
-        frame = self.draw_frame(frame, people, person_states)
-
-        self.render_video(frame)
-
-        self.render_info(people_count, entered_count, current_ids, person_states)
-
-        #~30fps cho UI, không cần khớp chính xác FPS gốc của video
-        self.root.after(15, self.update_frame)
-
-    def draw_frame(self, frame, people, person_states):
-
-        #Vẽ zone
-        cv2.polylines(
-            frame,
-            [self.zone],
-            isClosed=True,
-            color=(0, 0, 255),
-            thickness=2
-        )
-
-        for person in people:
-
-            x1, y1, x2, y2, confidence, track_id = person
-
-            state = person_states[track_id]
-
-            current_state = state["current"]
-
-            center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
-
-            #ZONE = cam, OUTSIDE = xanh lá
-            if current_state == "ZONE":
-
-                color = (0, 165, 255)
+                st.warning(
+                    "Chưa có zone hoặc zone không hợp lệ (cần ít nhất 3 điểm). "
+                    "Vui lòng chọn / vẽ Zone trước."
+                )
 
             else:
 
-                color = (0, 255, 0)
+                go_to("counter")
 
-            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
 
-            cv2.putText(
-                frame,
-                f"ID {track_id}",
-                (x1, y1 - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                color,
-                2
+def draw_frame(frame, people, zone, person_states):
+
+    #Vẽ zone
+    cv2.polylines(
+        frame,
+        [zone],
+        isClosed=True,
+        color=(0, 0, 255),
+        thickness=2
+    )
+
+    for person in people:
+
+        x1, y1, x2, y2, confidence, track_id = person
+
+        state = person_states[track_id]
+
+        current_state = state["current"]
+
+        center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
+
+        #ZONE = cam, OUTSIDE = xanh lá
+        if current_state == "ZONE":
+
+            color = (0, 165, 255)
+
+        else:
+
+            color = (0, 255, 0)
+
+        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+        
+        cv2.putText( frame, f"ID {track_id}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2 )
+
+        cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)
+
+    return frame
+
+
+def render_counter():
+
+    if st.button("< Quay lại Menu"):
+
+        go_to("menu")
+
+    zone = load_zone()
+
+    col_video, col_info = st.columns([2, 1])
+
+    video_placeholder = col_video.empty()
+
+    summary_placeholder = col_info.empty()
+    detail_placeholder = col_info.empty()
+
+    video = cv2.VideoCapture(VIDEO_PATH)
+
+    fps = video.get(cv2.CAP_PROP_FPS)
+
+    if fps <= 0:
+
+        fps = 30
+
+    set_confirm_time(fps, CONFIRM_SECONDS)
+
+    #Delay giữa các frame để không phát nhanh hơn tốc độ thật của video
+    frame_delay = 1.0 / fps
+
+    missing_frames = {}
+
+    try:
+
+        while True:
+
+            ret, frame = video.read()
+
+            if not ret:
+
+                summary_placeholder.info("Video đã kết thúc.")
+
+                break
+
+            people = track_people(frame)
+
+            current_ids = []
+            person_states = {}
+
+            for person in people:
+
+                track_id = person[5]
+
+                current_ids.append(track_id)
+
+                #ID xuất hiện ở frame này -> reset missing frames
+                missing_frames[track_id] = 0
+
+                state = get_person_state(person, zone)
+
+                person_states[track_id] = state
+
+            #Tăng missing_frames cho ID đã biết mà không xuất hiện ở frame này
+            for track_id in list(people_state.keys()):
+
+                if track_id in current_ids:
+
+                    continue
+
+                missing_frames[track_id] = missing_frames.get(track_id, 0) + 1
+
+                if (
+                    missing_frames[track_id] >= MAX_MISSING_FRAMES
+                    and people_state[track_id]["tracking"] != "LOST"
+                ):
+
+                    people_state[track_id]["tracking"] = "LOST"
+
+            people_count = len(current_ids)
+
+            #Entered luôn được tính lại từ people_state, không cộng/trừ tay
+            entered_count = sum(
+                1 for state in people_state.values() if state["entered"]
             )
 
-            cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)
+            frame = draw_frame(frame, people, zone, person_states)
 
-        return frame
+            #Đổi BGR (OpenCV) -> RGB (Streamlit)
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    def render_video(self, frame):
-
-        #Đổi màu BGR (OpenCV) sang RGB (Tkinter/PIL)
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        img = Image.fromarray(frame_rgb)
-
-        img = img.resize((720, 480))
-
-        imgtk = ImageTk.PhotoImage(image=img)
-
-        #Giữ reference để tránh bị garbage collect mất ảnh
-        self.video_label.imgtk = imgtk
-
-        self.video_label.configure(image=imgtk)
-
-    def render_info(self, people_count, entered_count, current_ids, person_states):
-
-        #Label chỉ cần .config(text=...) là tự thay nội dung cũ, không bị chồng chữ
-        self.summary_label.config(
-            text=f"People: {people_count}    Entered: {entered_count}"
-        )
-
-        #Text widget: xóa toàn bộ nội dung cũ rồi ghi lại danh sách mới
-        self.detail_text.delete("1.0", "end")
-
-        if not current_ids:
-
-            self.detail_text.insert("end", "(Không có ai trong frame)")
-
-            return
-
-        header = f"{'ID':<5}{'State':<9}{'Entered':<9}{'Tracking'}\n"
-
-        self.detail_text.insert("end", header)
-        self.detail_text.insert("end", "-" * 32 + "\n")
-
-        for track_id in current_ids:
-
-            state = person_states[track_id]
-
-            line = (
-                f"{track_id:<5}"
-                f"{state['current']:<9}"
-                f"{str(state['entered']):<9}"
-                f"{state['tracking']}\n"
+            #Placeholder .image() thay thế hoàn toàn ảnh cũ, không bị chồng
+            video_placeholder.image(
+                frame_rgb,
+                channels="RGB",
+                width=DISPLAY_WIDTH
             )
 
-            self.detail_text.insert("end", line)
+            summary_placeholder.markdown(
+                f"### People: {people_count}    Entered: {entered_count}"
+            )
 
-    def stop_and_back(self):
+            #Bảng chi tiết cũng bị thay thế hoàn toàn mỗi lần gọi, không cộng dồn
+            if current_ids:
 
-        self.running = False
+                rows = [
+                    {
+                        "ID": track_id,
+                        "State": person_states[track_id]["current"],
+                        "Entered": person_states[track_id]["entered"],
+                        "Tracking": person_states[track_id]["tracking"]
+                    }
+                    for track_id in current_ids
+                ]
 
-        self.video.release()
+            else:
 
-        self.app.build_menu()
+                rows = [{"ID": "-", "State": "-", "Entered": "-", "Tracking": "-"}]
+
+            detail_placeholder.dataframe(rows, use_container_width=True, hide_index=True)
+
+            time.sleep(frame_delay)
+
+    finally:
+
+        video.release()
 
 
 def main():
 
-    root = tk.Tk()
+    st.set_page_config(page_title="People Counter", layout="wide")
 
-    app = PeopleCounterApp(root)
+    if "mode" not in st.session_state:
 
-    root.mainloop()
+        st.session_state.mode = "menu"
+
+    if st.session_state.mode == "menu":
+
+        render_menu()
+
+    elif st.session_state.mode == "counter":
+
+        render_counter()
 
 
 if __name__ == "__main__":
 
-    main()
+    main
