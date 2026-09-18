@@ -7,12 +7,7 @@ width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
 height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
 fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-output = cv2.VideoWriter(
-    "videos/test.mp4",
-    fourcc,
-    fps,
-    (width, height)
-)
+output = cv2.VideoWriter( "videos/test.mp4", fourcc, fps, (width, height) )
 
 max_frames = int(fps * 15)
 
