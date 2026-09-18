@@ -21,19 +21,11 @@ if SRC_DIR not in sys.path:
 
 from detector import track_people, get_person_state, set_confirm_time, people_state
 
-# Đường dẫn video và file zone dùng chung cho cả 2 chức năng
-# Tính theo PROJECT_ROOT (không phải theo cwd) để chạy đúng dù bạn
-# chạy lệnh streamlit từ thư mục nào
 VIDEO_PATH = os.path.join(PROJECT_ROOT, "videos", "input.mp4")
 ZONE_PATH = os.path.join(PROJECT_ROOT, "zone.json")
 
-# Số frame cho phép 1 ID biến mất tạm thời trước khi coi là LOST thật
 MAX_MISSING_FRAMES = 10
-
-# Thời gian (giây) cần thấy 1 state mới liên tục thì mới tin là transition thật
 CONFIRM_SECONDS = 0.5
-
-# Chiều rộng hiển thị ảnh/video trên web
 DISPLAY_WIDTH = 720
 
 
@@ -46,7 +38,6 @@ def zone_file_is_valid():
     except (json.JSONDecodeError, OSError):
         return False
     zone_points = data.get("zone", [])
-    # Cần ít nhất 3 điểm mới tạo được polygon hợp lệ
     return len(zone_points) >= 3
 
 
