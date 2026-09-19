@@ -177,6 +177,7 @@ def draw_people(frame, people, zone, people_count, entered_count, person_states)
     return frame
 
 
+
 if __name__ == "__main__":
 
     video = cv2.VideoCapture("videos/input.mp4")
