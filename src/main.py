@@ -135,7 +135,6 @@ def load_zone():
 
     return zone
 
-
 def draw_people(frame, people, zone, people_count, entered_count, person_states):
 
     #Vẽ zone
