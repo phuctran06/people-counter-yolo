@@ -69,10 +69,7 @@ def read_video(video_path, zone):
 
             missing_frames[track_id] = missing_frames.get(track_id, 0) + 1
 
-            if (
-                missing_frames[track_id] >= MAX_MISSING_FRAMES
-                and people_state[track_id]["tracking"] != "LOST"
-            ):
+            if ( missing_frames[track_id] >= MAX_MISSING_FRAMES and people_state[track_id]["tracking"] != "LOST" ):
 
                 people_state[track_id]["tracking"] = "LOST"
 
@@ -87,9 +84,7 @@ def read_video(video_path, zone):
 
         #Entered luôn được tính lại từ people_state, không cộng/trừ tay
         #=> tự động đúng cả với ID mới đã nằm sẵn trong ZONE (Case 9)
-        entered_count = sum(
-            1 for state in people_state.values() if state["entered"]
-        )
+        entered_count = sum( 1 for state in people_state.values() if state["entered"] )
         lost_ids = [ track_id for track_id, state in people_state.items() if state["tracking"] == "LOST" ]
         #Hiển thị thông tin
         print("Current IDs:", current_ids)
@@ -134,6 +129,7 @@ def load_zone():
     zone = np.array(data["zone"], dtype=np.int32)
 
     return zone
+
 
 def draw_people(frame, people, zone, people_count, entered_count, person_states):
 
