@@ -106,13 +106,7 @@ def render_menu():
 def draw_frame(frame, people, zone, person_states):
 
     #Vẽ zone
-    cv2.polylines(
-        frame,
-        [zone],
-        isClosed=True,
-        color=(0, 0, 255),
-        thickness=2
-    )
+    cv2.polylines( frame, [zone], isClosed=True, color=(0, 0, 255), thickness=2 )
 
     for person in people:
 
@@ -231,11 +225,7 @@ def render_counter():
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
             #Placeholder .image() thay thế hoàn toàn ảnh cũ, không bị chồng
-            video_placeholder.image(
-                frame_rgb,
-                channels="RGB",
-                width=DISPLAY_WIDTH
-            )
+            video_placeholder.image( frame_rgb, channels="RGB", width=DISPLAY_WIDTH )
 
             summary_placeholder.markdown(
                 f"### People: {people_count}    Entered: {entered_count}"
