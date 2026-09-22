@@ -247,8 +247,10 @@ def main():
                 "Chưa có zo ne hoặc zone không hợp lệ (cần ít nhất 3 điểm). "
                 "Vui lòng chọn \"Chọn / Vẽ Zone\" ở sidebar trước."
             )
+            
         else:
             render_counter()
+
 
 
 if __name__ == "__main__":
