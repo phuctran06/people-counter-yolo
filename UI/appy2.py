@@ -252,10 +252,6 @@ def main():
             render_counter()
 
 
-
-
-
-
 if __name__ == "__main__":
     main()
 
