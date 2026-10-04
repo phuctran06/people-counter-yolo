@@ -8,7 +8,6 @@ import streamlit as st
 from detector import track_people, get_person_state, set_confirm_time, people_state
 from select_zone import select_zone_mode
 
-
 #Đường dẫn video và file zone dùng chung cho cả 2 chức năng
 VIDEO_PATH = "videos/input.mp4"
 ZONE_PATH = "zone.json"
