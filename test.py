@@ -24,5 +24,3 @@ video.release()
 output.release()
 
 
-
-
