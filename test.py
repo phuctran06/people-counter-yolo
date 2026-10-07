@@ -1,5 +1,6 @@
 import cv2
 
+
 video = cv2.VideoCapture("videos/input.mp4")
 
 fps = video.get(cv2.CAP_PROP_FPS)
