@@ -18,6 +18,7 @@ for _ in range(max_frames):
     if not ret:
         break
 
+    
     output.write(frame)
 
 video.release()
