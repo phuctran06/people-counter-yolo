@@ -160,6 +160,7 @@ def render_counter():
 
     set_confirm_time(fps, CONFIRM_SECONDS)
 
+    
     #Delay giữa các frame để không phát nhanh hơn tốc độ thật của video
     frame_delay = 1.0 / fps
 
